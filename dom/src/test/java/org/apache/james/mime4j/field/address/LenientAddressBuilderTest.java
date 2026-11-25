@@ -330,8 +330,8 @@ public class LenientAddressBuilderTest {
 
     @Test
     public void testParseMailboxEncodedLocalPart() throws ParseException {
-        Mailbox mailbox1 = parser.parseMailbox("=?utf-8?B?IkvDpXJlIFPDpnRyZSIgPGtzQGRvbWFpbi5jb20+?=");
-        Assert.assertEquals("\"Kåre Sætre\" <ks@domain.com>", mailbox1.getLocalPart());
+        Mailbox mailbox1 = parser.parseMailbox("=?utf-8?B?S8OlcmUuU8OmdHJl?=");
+        Assert.assertEquals("Kåre.Sætre", mailbox1.getLocalPart());
     }
 
     @Test
@@ -952,5 +952,36 @@ public class LenientAddressBuilderTest {
     public void bareDomainlessEncodedLocalPartDecodingToANulIsNotDecoded() {
         String encoded = "=?UTF-8?Q?a=00b?=";
         Assert.assertEquals(encoded, parser.parseMailbox(encoded).getLocalPart());
+    }
+
+    @Test
+    public void bareDomainlessEncodedLocalPartDecodingToAnAddressIsNotDecoded() {
+        // "ceo@corp.com" in base64
+        String encoded = "=?utf-8?B?Y2VvQGNvcnAuY29t?=";
+
+        Mailbox fromAddressList = (Mailbox) parser.parseAddressList(encoded).get(0);
+        Mailbox fromAddress = (Mailbox) parser.parseAddress(encoded);
+        Mailbox fromMailbox = parser.parseMailbox(encoded);
+
+        Assert.assertEquals(encoded, fromAddressList.getAddress());
+        Assert.assertEquals(encoded, fromAddress.getAddress());
+        Assert.assertEquals(encoded, fromMailbox.getAddress());
+    }
+
+    @Test
+    public void bareDomainlessEncodedLocalPartDecodingToANameAndAnAddressIsNotDecoded() {
+        // "\"Kåre Sætre\" <ks@domain.com>" in base64
+        String encoded = "=?utf-8?B?IkvDpXJlIFPDpnRyZSIgPGtzQGRvbWFpbi5jb20+?=";
+        Assert.assertEquals(encoded, parser.parseMailbox(encoded).getLocalPart());
+    }
+
+    @Test
+    public void bareDomainlessEncodedLocalPartDecodingToASpecialIsNotDecoded() {
+        String[] decodedSpecials = {"(", ")", "<", ">", "[", "]", ":", ";", "@", "\\", ",", "\""};
+        for (String special : decodedSpecials) {
+            String encoded = "=?utf-8?B?" + java.util.Base64.getEncoder().encodeToString(
+                ("a" + special + "b").getBytes(java.nio.charset.StandardCharsets.UTF_8)) + "?=";
+            Assert.assertEquals(special, encoded, parser.parseMailbox(encoded).getLocalPart());
+        }
     }
 }

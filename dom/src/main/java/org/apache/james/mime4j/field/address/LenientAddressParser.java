@@ -380,26 +380,28 @@ public class LenientAddressParser implements AddressParser {
 
     /**
      * A mailbox without domain whose bare local part keeps its encoded words decoded (MIME4J-253).
-     * A decoded text holding a control character, such as CR or LF, is not a local part: the encoded
-     * form is kept, so that the address cannot carry a line break into a header it is written to.
+     * A decoded text holding a control character, such as CR or LF, or an RFC 5322 special other
+     * than ".", such as "@", "&lt;" or a quote, is not a local part: the encoded form is kept, so that
+     * the address can neither carry a line break into a header it is written to nor read as an
+     * address, or a name and an address, that the header does not hold.
      */
     private Mailbox createMailbox(final String localPart) {
         if (localPart != null && localPart.length() > 0) {
             String decoded = DecoderUtil.decodeEncodedWords(localPart, this.monitor);
-            return new Mailbox(null, null, holdsControlChar(decoded) ? localPart : decoded, null);
+            return new Mailbox(null, null, isDecodedLocalPart(decoded) ? decoded : localPart, null);
         } else {
             return null;
         }
     }
 
-    private static boolean holdsControlChar(final String text) {
+    private static boolean isDecodedLocalPart(final String text) {
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c < 0x20 || c == 0x7f) {
-                return true;
+            if (c < 0x20 || c == 0x7f || "()<>[]:;@\\,\"".indexOf(c) >= 0) {
+                return false;
             }
         }
-        return false;
+        return true;
     }
 
     /**
